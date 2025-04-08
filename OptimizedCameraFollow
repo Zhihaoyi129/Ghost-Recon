@@ -1,0 +1,74 @@
+using UnityEngine;
+
+public class OptimizedCameraFollow : MonoBehaviour
+{
+    [Header("Basic setup")]
+    public Transform target;
+    public float distance = 5f;
+    public float height = 3f;
+    
+    [Header("Follow response")]
+    [Tooltip("Conventional following velocity")] public float normalFollowSpeed = 10f;
+    [Tooltip("Acceleration times when retreating")] public float backwardSpeedMultiplier = 1.5f;
+    [Tooltip("Minimum following distance")] public float minDistance = 3f;
+    
+    [Header("Viewing Angle control")]
+    [Tooltip("depression")] public float pitchAngle = 30f;
+    [Tooltip("Rotational smoothness")] public float rotationSmoothness = 5f;
+    
+    private Vector3 currentVelocity;
+    private float currentRotationVelocity;
+
+    void LateUpdate()
+    {
+        if (target == null) return;
+        
+        // Calculate target position
+        Vector3 targetForward = target.forward;
+        Vector3 targetPosition = target.position - targetForward * distance + Vector3.up * height;
+        
+        // Detecting backward movement
+        bool isMovingBackward = Vector3.Dot(target.forward, target.GetComponent<Rigidbody>().velocity.normalized) < -0.3f;
+        
+        // Dynamically adjust the following speed
+        float followSpeed = isMovingBackward ? 
+            normalFollowSpeed * backwardSpeedMultiplier : 
+            normalFollowSpeed;
+        
+        // Smooth moving position
+        transform.position = Vector3.SmoothDamp(
+            transform.position,
+            targetPosition,
+            ref currentVelocity,
+            1f / followSpeed // Convert speed to smooth time
+        );
+        
+        // Calculate looking point (slightly forward offset)
+        Vector3 lookAtPoint = target.position + targetForward * 2f;
+        
+        // Smooth rotation
+        Quaternion targetRotation = Quaternion.LookRotation(lookAtPoint - transform.position);
+        transform.rotation = Quaternion.Slerp(
+            transform.rotation,
+            targetRotation,
+            rotationSmoothness * Time.deltaTime
+        );
+        
+        // Prevent the camera from going through the wall
+        PreventWallClipping();
+    }
+    
+    void PreventWallClipping()
+    {
+        RaycastHit hit;
+        Vector3 rayDirection = transform.position - target.position;
+        
+        if (Physics.Raycast(target.position, rayDirection, out hit, distance))
+        {
+            if (!hit.collider.isTrigger)
+            {
+                transform.position = hit.point - rayDirection.normalized * 0.5f;
+            }
+        }
+    }
+}
