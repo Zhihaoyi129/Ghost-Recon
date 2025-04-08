@@ -1,0 +1,50 @@
+using UnityEngine;
+
+[RequireComponent(typeof(Rigidbody))]
+public class GhostMovement : MonoBehaviour
+{
+    [Header("Mobile Settings")]
+    [Tooltip("Moving speed")] public float moveSpeed = 10f;
+    [Tooltip("Steering speed")] public float turnSpeed = 200f;
+    
+    [Header("Physical setup")]
+    [Tooltip("Collision detection mode")] public CollisionDetectionMode collisionMode = CollisionDetectionMode.ContinuousDynamic;
+    
+    private Rigidbody rb;
+    private Vector3 movementInput;
+    private float cameraOffsetY;
+
+    void Start()
+    {
+        rb = GetComponent<Rigidbody>();
+        rb.freezeRotation = true;
+        rb.collisionDetectionMode = collisionMode;
+        cameraOffsetY = Camera.main.transform.position.y - transform.position.y;
+    }
+
+    void Update()
+    {
+        // Get input
+        movementInput = new Vector3(
+            Input.GetAxis("Horizontal"),
+            0f,
+            Input.GetAxis("Vertical")
+        );
+    }
+
+    void FixedUpdate()
+    {
+        if (movementInput.magnitude > 0.1f)
+        {
+            // Calculated direction of movement
+            Vector3 moveDirection = movementInput.normalized * moveSpeed * Time.fixedDeltaTime;
+            
+            // Application movement
+            rb.MovePosition(rb.position + transform.TransformDirection(moveDirection));
+            
+            // Smooth steering
+            Quaternion targetRotation = Quaternion.LookRotation(new Vector3(movementInput.x, 0, movementInput.z));
+            rb.rotation = Quaternion.Slerp(rb.rotation, targetRotation, turnSpeed * Time.fixedDeltaTime);
+        }
+    }
+}
