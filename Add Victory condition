@@ -1,0 +1,81 @@
+using UnityEngine;
+using TMPro;
+
+[RequireComponent(typeof(Rigidbody))]
+public class GhostMovement : MonoBehaviour
+{
+    [Header("Movement Settings")]
+    public float moveSpeed = 10f;
+    public float turnSpeed = 200f;
+    
+    [Header("Physics Settings")]
+    public CollisionDetectionMode collisionMode = CollisionDetectionMode.ContinuousDynamic;
+    
+    [Header("Victory Settings")]
+    public TextMeshProUGUI victoryText; // 确保这是TextMeshProUGUI类型
+    
+    private Rigidbody rb;
+    private Vector3 movementInput;
+    private bool hasWon = false;
+
+    void Start()
+    {
+        rb = GetComponent<Rigidbody>();
+        rb.freezeRotation = true;
+        rb.collisionDetectionMode = collisionMode;
+        
+        // 确保使用富文本标签
+        if(victoryText != null)
+        {
+            victoryText.gameObject.SetActive(false);
+            victoryText.richText = true; // 启用富文本
+            victoryText.font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+        }
+    }
+
+    void Update()
+    {
+        movementInput = new Vector3(
+            Input.GetAxis("Horizontal"),
+            0f,
+            Input.GetAxis("Vertical")
+        );
+    }
+
+    void FixedUpdate()
+    {
+        if (movementInput.magnitude > 0.1f && !hasWon)
+        {
+            Vector3 moveDirection = movementInput.normalized * moveSpeed * Time.fixedDeltaTime;
+            rb.MovePosition(rb.position + transform.TransformDirection(moveDirection));
+            
+            Quaternion targetRotation = Quaternion.LookRotation(new Vector3(movementInput.x, 0, movementInput.z));
+            rb.rotation = Quaternion.Slerp(rb.rotation, targetRotation, turnSpeed * Time.fixedDeltaTime);
+        }
+    }
+
+    void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Finish") && !hasWon)
+        {
+            WinGame();
+        }
+    }
+
+    void WinGame()
+    {
+        hasWon = true;
+        
+        if(victoryText != null)
+        {
+            // 使用富文本设置金色文字
+            victoryText.text = "<color=#FFD700>VICTORY!</color>";
+            victoryText.gameObject.SetActive(true);
+            
+            // 强制刷新字体
+            victoryText.ForceMeshUpdate();
+        }
+        
+        Time.timeScale = 0f;
+    }
+}
