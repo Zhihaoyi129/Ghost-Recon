@@ -1,0 +1,161 @@
+using UnityEngine;
+using TMPro;
+
+[RequireComponent(typeof(Rigidbody))]
+public class GhostMovement : MonoBehaviour
+{
+    [Header("Movement Settings")]
+    public float moveSpeed = 10f;
+    public float turnSpeed = 200f;
+    
+    [Header("Physics Settings")]
+    public CollisionDetectionMode collisionMode = CollisionDetectionMode.ContinuousDynamic;
+    
+    [Header("Game State UI")]
+    public TextMeshProUGUI victoryText; // 胜利文本
+    public TextMeshProUGUI gameOverText; // 新增：失败文本
+    public TextMeshProUGUI timerText; // 新增：计时器文本
+    public GameObject restartButton; // 新增：重新开始按钮
+    
+    [Header("Time Settings")]
+    public float timeLimit = 90f; // 新增：时间限制90秒
+    
+    private Rigidbody rb;
+    private Vector3 movementInput;
+    private bool hasWon = false;
+    private bool isGameActive = true;
+    private float currentTime;
+
+    void Start()
+    {
+        rb = GetComponent<Rigidbody>();
+        rb.freezeRotation = true;
+        rb.collisionDetectionMode = collisionMode;
+        currentTime = timeLimit;
+        
+        // 初始化UI状态
+        InitializeUI();
+    }
+
+    void InitializeUI()
+    {
+        // 胜利文本设置
+        if(victoryText != null)
+        {
+            victoryText.gameObject.SetActive(false);
+            victoryText.richText = true;
+            victoryText.text = "<color=#FFD700>VICTORY!</color>";
+            victoryText.font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+        }
+        
+        // 失败文本设置
+        if(gameOverText != null)
+        {
+            gameOverText.gameObject.SetActive(false);
+            gameOverText.richText = true;
+            gameOverText.text = "<color=#FF0000>GAME OVER</color>\n<size=36>Time's Up!</size>";
+            gameOverText.font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+        }
+        
+        // 其他UI元素
+        if(restartButton != null) restartButton.SetActive(false);
+    }
+
+    void Update()
+    {
+        if (!isGameActive) return;
+        
+        // 处理玩家输入
+        movementInput = new Vector3(
+            Input.GetAxis("Horizontal"),
+            0f,
+            Input.GetAxis("Vertical")
+        );
+        
+        // 更新计时器
+        UpdateTimer();
+    }
+
+    void UpdateTimer()
+    {
+        currentTime -= Time.deltaTime;
+        
+        // 更新计时器显示
+        int seconds = Mathf.CeilToInt(currentTime);
+        timerText.text = string.Format("{0}:{1:00}", seconds / 60, seconds % 60);
+        
+        // 最后10秒变红色
+        if (currentTime <= 10f)
+        {
+            timerText.color = Color.red;
+        }
+        
+        // 检查时间耗尽
+        if (currentTime <= 0f)
+        {
+            currentTime = 0f;
+            GameOver();
+        }
+    }
+
+    void FixedUpdate()
+    {
+        if (movementInput.magnitude > 0.1f && !hasWon && isGameActive)
+        {
+            Vector3 moveDirection = movementInput.normalized * moveSpeed * Time.fixedDeltaTime;
+            rb.MovePosition(rb.position + transform.TransformDirection(moveDirection));
+            
+            Quaternion targetRotation = Quaternion.LookRotation(new Vector3(movementInput.x, 0, movementInput.z));
+            rb.rotation = Quaternion.Slerp(rb.rotation, targetRotation, turnSpeed * Time.fixedDeltaTime);
+        }
+    }
+
+    void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Finish") && !hasWon && isGameActive)
+        {
+            WinGame();
+        }
+    }
+
+    void WinGame()
+    {
+        hasWon = true;
+        isGameActive = false;
+        
+        if(victoryText != null)
+        {
+            victoryText.gameObject.SetActive(true);
+            victoryText.ForceMeshUpdate();
+        }
+        
+        EndGame();
+    }
+
+    void GameOver()
+    {
+        isGameActive = false;
+        
+        if(gameOverText != null)
+        {
+            gameOverText.gameObject.SetActive(true);
+            gameOverText.ForceMeshUpdate();
+        }
+        
+        EndGame();
+    }
+
+    void EndGame()
+    {
+        Time.timeScale = 0f; // 暂停游戏
+        if(restartButton != null) restartButton.SetActive(true);
+    }
+    
+    // 供UI按钮调用的方法
+    public void RestartGame()
+    {
+        Time.timeScale = 1f;
+        UnityEngine.SceneManagement.SceneManager.LoadScene(
+            UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+    }
+}
