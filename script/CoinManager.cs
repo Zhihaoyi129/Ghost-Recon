@@ -4,67 +4,47 @@ using UnityEngine;
 public class CoinManager : MonoBehaviour
 {
     public static CoinManager Instance;
-
-    [Header("UI References")]
-    public TextMeshProUGUI coinCounterText;
+    
+    [Header("Settings")]
     public int totalCoins = 6;
-
-    [Header("Debug")]
-    public bool enableDebugButtons = true;
-
+    public TextMeshProUGUI coinCounterText;
+    
     private int collectedCoins = 0;
-    private int totalScore = 0;
 
-    void Awake()
+    private void Awake()
     {
-        // 单例模式初始化
         if (Instance == null)
         {
             Instance = this;
-            Debug.Log("CoinManager初始化完成");
         }
         else
         {
-            Debug.LogWarning("检测到重复的CoinManager，已销毁", gameObject);
             Destroy(gameObject);
         }
     }
 
-    void Start()
-    {
-        UpdateUI();
-    }
-
     public void CollectCoin(int value = 1)
     {
-        collectedCoins++;
-        totalScore += value;
-        Debug.Log($"金币收集: {collectedCoins}/{totalCoins} (分数+{value})");
-
+        collectedCoins += value;
         UpdateUI();
-
+        
         if (collectedCoins >= totalCoins)
         {
-            AllCoinsCollected();
+            GameManager.Instance.ShowSuccess();
         }
     }
 
-    void UpdateUI()
+    private void UpdateUI()
     {
         if (coinCounterText != null)
         {
-            coinCounterText.text = $"Coins: {collectedCoins}/{totalCoins}\nScore: {totalScore}";
-        }
-        else
-        {
-            Debug.LogError("coinCounterText未分配！");
+            coinCounterText.text = $"Coins: {collectedCoins}/{totalCoins}";
         }
     }
 
-    void AllCoinsCollected()
+    public void ResetCoins()
     {
-        Debug.Log($"<color=green>所有金币收集完成！最终分数: {totalScore}</color>");
-        // 这里添加游戏胜利逻辑
+        collectedCoins = 0;
+        UpdateUI();
     }
-
 }
